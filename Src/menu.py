@@ -1,14 +1,15 @@
 import pygame as pg
 import os
 import time 
-import json
 
 pg.init()
 
 VERSION = "0.01"
 
+Fullscreen = False
+
+
 class menu_button:
-    # Default button looks like this
     def __init__(self, text, width=200, height=100, color = (70, 130, 180), align="center", offset=(0, 0)):
         self.width = width
         self.height = height
@@ -17,6 +18,7 @@ class menu_button:
         self.color = color
         self.align = align
         self.offset = offset
+        self.font = pg.font.SysFont("Arial", 20)
 
     def update_position(self, window):
         w, h = window.get_width(), window.get_height()
@@ -36,8 +38,7 @@ class menu_button:
     def draw(self, window):
         self.update_position(window)
         pg.draw.rect(window, self.color, self.rect)
-        font = pg.font.SysFont("Arial", 20)
-        text_surface = font.render(self.text, True, (255, 255, 255))
+        text_surface = self.font.render(self.text, True, (255, 255, 255))
         text_rect = text_surface.get_rect(center=self.rect.center)
         window.blit(text_surface, text_rect)
 
@@ -57,6 +58,7 @@ pg.display.set_caption("Menu")
 window = pg.display.set_mode((Width, Height), pg.RESIZABLE)
 
 
+
 og_y = -150
 space = 140
 
@@ -73,6 +75,7 @@ go_back_to_menu = menu_button("Back to Menu", offset=(0, y_pos_spacer(y_pos_spac
 
 # Both arrows initialised by default. 
 right_arrow = None
+is_fullscreen = None
 left_arrow = None
 
 
@@ -80,6 +83,8 @@ def draw_title(text, font, color, x, y, window=window):
     img = font.render(text, True, color)
     rect = img.get_rect(center=(x, y))
     window.blit(img, rect)
+    # Allows for labels to be clickable 
+    return rect 
 
 # Draws paragraphs on menu
 def draw_p(surface, text, pos, font, color, extra_spacing=0):
@@ -99,29 +104,54 @@ def draw_p(surface, text, pos, font, color, extra_spacing=0):
         x = pos[0]
         y += word_height
 
+def create_save():
+    with open("saves.json", "w") as f:
+        f.write("")    
+
+
 
 def saves_menu(window):
-    pass
+    pg.display.set_caption("Saves")
+    draw_title("Saves", pg.font.SysFont("Arial", 40), text_col, w//2, int(h * .1))
+
+    spacing = 200
+    # Only 3 saves available 
+    num_saves = 4
+    
+    saves_offset = -(spacing * (num_saves - 1)) // 2
+
+    for i in range(1, num_saves):
+        y_offset = saves_offset + (i -.5)  * spacing 
+        save = menu_button(f"Save {i}", (w//2), (h//2)//2 - 100, offset=(0, y_offset))
+        save.draw(window)
+    
+    
+    
 
 def load(window):
-    time.sleep(1)
-    pg.display.set_caption("Loading...")
-    window.fill((0,0,0))
-    window.blit(window, (0,0))
-    draw_title("Loading...", pg.font.SysFont("Arial", 70), (255, 255, 255), w//2, int(h * 0.5))
+    #time.sleep(1)
+    for i in range(2):
+        loading = "Loading" + "." * (i * 3)
+        pg.display.set_caption("Loading...")
+        window.fill((0,0,0))
+        draw_title(loading, pg.font.SysFont("Arial", 70), (255, 255, 255), w//2, int(h * 0.5))
+        pg.display.update()
+        time.sleep(1)
+
 
 def start(window):
         # The game will load immediately if the user already has a save file. Otherwise, it will launch create/populate the saves file. 
     if os.path.getsize("saves.json") == 0:
         load(window)
         print("We done loading")
+        exit()
     else:
         saves_menu(window)
 
 
 
 
-bible_versions = ["King James Bible", "World English Bible (WEB)", "Young’s Literal Translation (YLT)", "Bible in Basic English"]
+bible_versions = ["King James Bible", "World English Bible (WEB)", "Young's Literal Translation (YLT)", "Bible in Basic English"]
 
 
 def draw_arrow(surface, color, x, y, size=30, direction="right"):
@@ -148,7 +178,7 @@ def draw_arrow(surface, color, x, y, size=30, direction="right"):
 def about(window):
     pg.display.set_caption("About")
     draw_title("About", font, text_col, w // 2, int (h * 0.1))
-    game_desc = draw_p(window, "This game is meant to be both educational and fun. I want to teach people about Jesus and thought a game would be a good opportunity to do that. The images and assets are AI generated. This entire project is licensed under the GPL 3.0. All code is editable, free and distributable as long as it is maintained as such. I pray to God this game is edifying.",
+    draw_p(window, "This game is meant to be both educational and fun. I want to teach people about Jesus and thought a game would be a good opportunity to do that. The images and assets are AI generated. This entire project is licensed under the GPL 3.0. All code is editable, free and distributable as long as it is maintained as such. I pray to God this game is edifying.",
                        (50, 150), font, text_col,
                        extra_spacing=10)
 
@@ -165,6 +195,9 @@ def settings(window):
     curr_bible_version = draw_title( f"Bible Version: {bible_versions[b_version]}", pg.font.SysFont("Arial", 30), text_col, w // 2, og_space + 100)
     right_arrow = draw_arrow(window, text_col, (w//2) + 400, og_space + 100, 40)
     left_arrow = draw_arrow(window, text_col, (w//2) - 400, og_space + 100, 40, "left")
+    # Lets the user make window full screen
+    is_fullscreen = draw_title(f"Fullscreen: {str(Fullscreen).lower()}", pg.font.SysFont("Arial", 30), text_col, w//2, og_space + 200)
+    return is_fullscreen
 
 # Makes sure the background is loaded, even if not run from the directory where the image is in. 
 os.chdir(os.path.dirname(__file__))
@@ -201,10 +234,13 @@ while run:
         if menu_state == "about":
                 about(window)
         elif menu_state == "settings":
-                settings(window)
+            is_fullscreen = settings(window)
         else:
             start(window)
-
+            
+    # Minimum width and min_height
+    MIN_W, MIN_H = 640, 480
+    
     # Checks for user events
     for event in pg.event.get():
         if event.type == pg.QUIT or (event.type == pg.MOUSEBUTTONDOWN and exit_button.rect.collidepoint(event.pos) and menu_state != "start"):
@@ -221,6 +257,7 @@ while run:
                 elif settings_button.rect.collidepoint(event.pos):
                     menu_state = "settings"
 
+
             # Go back to menu button fixed. It can only be heard if the current menu is NOT main. If it is main, then it will not do anything and replace the settings button. The start mennu transfers the user to the game. Buttons should be destroyed for start. 
             elif menu_state != "main" and menu_state != "start":
                 # Arrows willl only work in the settings menu. The variables right_arrow and left_arrow must exist PRIOR to going to settings.
@@ -230,6 +267,10 @@ while run:
                         b_version = (b_version + 1) % len(bible_versions)
                     elif left_arrow.collidepoint(event.pos):
                         b_version = (b_version - 1) % len(bible_versions)
+                    if is_fullscreen.collidepoint(event.pos):
+                        Fullscreen = not Fullscreen
+                        window = pg.display.set_mode((0, 0), pg.FULLSCREEN) if Fullscreen else pg.display.set_mode((Width, Height), pg.RESIZABLE)
+                        
                 if go_back_to_menu.rect.collidepoint(event.pos):
                     menu_state = "main"
 
