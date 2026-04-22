@@ -1,48 +1,26 @@
 import json 
+import pickle 
 
 
-
-# What user will see on menu
-save_display = {
-    "Save": 1,
-    "Character Name" : "",
-    "Progress" : None,
-    "Playtime" : 0, 
-    "Timestamp" : None,
-    "Location" : "Nazareth" 
-}
-
-
-# Actual save data program needs to parse 
-save_data = {
-    "Progress" : {
-        "Level": None, 
-        "Easter Eggs" : None,
-        "Gospel" : {
-            "Chapter" : None
-        }
-    
-    
-        
-    }
-    
-    
-    
-    
-    
+display_data = {
+    "Time Played" : (0, 0, 0), 
+    "Location" : "None", 
+    "Name" : None
 }
 
 
 
-
-
-
-print(json.dumps(save_display, indent=4))
-
-save_file = {
-    "display" : save_display, 
-    "data" : save_data
-}
-
-with open("saves.json", "w") as file:
-    json.dump(save_file, file, indent=4)
+class savesys:
+    def __init__(self, save_folder):
+        self.json = json
+        self.save_folder = save_folder
+    def save(self, data, name):
+        data_file = open(self.save_folder+"/"+name+self.json, "wb")
+        pickle.dump(data, data_file)
+    def load_data(self, name):
+        data_file = open(self.save_folder+"/"+name+self.file_extension, "rb")
+        data = pickle.load(data_file)
+        return data
+    
+    
+Save = savesys("saves")
