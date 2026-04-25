@@ -1,8 +1,13 @@
 import pygame as pg
 import os
-from ui.button import menu_button
-import ui.config  
+from ui.button import MenuButton, SaveButtons
+from ui.config import button_position, saves_button_size, button_y, text_col, bible_versions
 import pythonbible as bible
+from ui.text import TextRender
+from savemanager import user_new, new, display_data, data_display
+import pygame_widgets
+from pygame_widgets.textbox import TextBox
+
 
 
 
@@ -15,8 +20,6 @@ verse_ids = bible.convert_references_to_verse_ids(references)
 
 john_316 = bible.get_verse_text(verse_ids[0])
 
-
-
 VERSION = "0.01"
 
 Fullscreen = False
@@ -25,10 +28,7 @@ clock = pg.time.Clock()
 FPS = 60
 
 
-font = pg.font.SysFont("Arial", 40)
-
-# Default text colour is black
-text_col = "BLACK"
+font = pg.font.SysFont("Sans Serif", 40)
 
 
 # Default width and height (got from user display)
@@ -40,48 +40,54 @@ pg.display.set_caption("Menu")
 window = pg.display.set_mode((Width, Height), pg.RESIZABLE)
 
 
+class SaveSlot:
+    def __init__(self):
+        self.textbox = None
+    
+    def output(self):
+        if self.textbox:
+            text = self.textbox.getText()
+            return text 
+    
+    def save_menu(self, window):	
+        state = f"{new} Save"
+        pg.display.set_caption(state)
+        
+        TextRender.draw_title(window, state, font, text_col, w//2, int(h * .1))
+        TextRender.draw_title(window, "Enter info", font, text_col, w//2, int(h * .2))
+        TextRender.draw_title(window, data_display(), pg.font.SysFont("Arial", 30), text_col, w//2, int(h * .3))
+        
+        if self.textbox is None:
+            self.textbox = TextBox(window, w//2, int(h * .28), 300, 50, fontSize=20, borderColour="RED", textColour="BLACK",
+                            onSubmit=self.output, radius=10, borderThickness=5)
+        
+        self.textbox.draw()
+    def clear_box(self):
+        if self.textbox:
+            self.textbox.hide()
+            self.textbox = None   
 
-og_y = -150
-space = 140
+    
 
-def y_pos_spacer(og_y):
-    og_y += space
-    return og_y
+    
 
-start_button = menu_button("Start", offset=(0, og_y))
-about_button = menu_button("About", offset=(0, y_pos_spacer(og_y)))
-settings_button = menu_button("Settings", offset=(0, y_pos_spacer(y_pos_spacer(og_y))))
+
+start_button = MenuButton("Start", offset=(0, button_y[0]))
+about_button = MenuButton("About", offset=(0, button_y[1]))
+settings_button = MenuButton("Settings", offset=(0, button_y[2]))
 # If user is in fullscreen, they cannot click the ‘x’ to exit out of the game. That is why an exit button is needed. 
-exit_button = menu_button("Exit", offset=(0, y_pos_spacer(y_pos_spacer(y_pos_spacer(og_y)))))
-go_back_to_menu = menu_button("Back to Menu", offset=(0, y_pos_spacer(y_pos_spacer(og_y))))
-
-right_arrow = left_arrow = is_fullscreen = go_back_to_menu_saves= None
+exit_button = MenuButton("Exit", offset=(0, button_y[3]))
+go_back_to_menu = MenuButton("Back to Menu", offset=(0, button_y[2]))
 
 
-def draw_title(text, font, color, x, y, window=window):
-    img = font.render(text, True, color)
-    rect = img.get_rect(center=(x, y))
-    window.blit(img, rect)
-    # Allows for labels to be clickable 
-    return rect 
+go_back_to_saves = MenuButton("Back to Saves", saves_button_size["width"], saves_button_size["height"], offset=(button_position["b_saves"]))
 
-# Draws paragraphs on menu
-def draw_p(surface, text, pos, font, color, extra_spacing=0):
-    p_font = pg.font.SysFont("Arial", 30)
-    collection = [word.split(' ') for word in text.splitlines()]
-    space = p_font.size(' ')[0]
-    x, y = pos
-    for lines in collection:
-        for words in lines:
-            words_surface = p_font.render(words,  True, color)
-            word_width, word_height = words_surface.get_size()
-            if x + word_width >= w:
-                x =  pos[0]
-                y += word_height + extra_spacing
-            surface.blit(words_surface, (x, y))
-            x += word_width + space
-        x = pos[0]
-        y += word_height
+
+
+
+right_arrow = left_arrow = is_fullscreen = go_back_to_menu_saves = None
+
+
 
 def create_save():
     with open("saves.json", "w") as f:
@@ -89,26 +95,30 @@ def create_save():
 
 
 
-def saves_menu(window):
-    global go_back_to_menu_saves
+def save_select(window):
+    global go_back_to_menu_saves, save_button_list
     # Custom go back to menu button for this menu 
     pg.display.set_caption("Saves")
-    draw_title("Saves", font, text_col, w//2, int(h * .1))
+    TextRender.draw_title(window, "Saves", font, text_col, w//2, int(h * .1))
 
     spacing = 200
-    # Only 3 saves available 
     num_saves = 4
     
+    save_button_list = []
+    selected_save = None
+    
+    
     saves_offset = -(spacing * (num_saves - 1)) // 2
-    saves_button = []
     for i in range(1, num_saves):
         y_offset = saves_offset + (i -.5)  * spacing 
-        save = menu_button(f"Save {i}:", (w//2), (h//2)//2 - 100, offset=(0, y_offset))
-        saves_button.append(save)
+        save = SaveButtons(i, f"Save {i}", offset=(0, y_offset))
         save.draw(window)
+        save_button_list.append(save)
         last_y = y_offset
-    go_back_to_menu_saves = menu_button("Back to Menu", 300, 100, offset=(0, last_y + 200))
+    go_back_to_menu_saves = MenuButton("Back to Menu", saves_button_size["width"], saves_button_size["height"], offset=(0, last_y + 200))
     go_back_to_menu_saves.draw(window)
+
+        
 
     
     
@@ -119,17 +129,14 @@ def load(window):
         loading = "Loading" + "." * (i * 3)
         pg.display.set_caption("Loading...")
         window.fill(("BLACK"))
-        draw_title(loading, pg.font.SysFont("Arial", 70), ("WHITE"), w//2, int(h * 0.5))
+        TextRender.draw_title(window, loading, pg.font.SysFont("Arial", 70), ("WHITE"), w//2, int(h * 0.5))
         pg.display.update()
         pg.time.wait(1000)
 
 
 def start(window):
-    saves_menu(window)
+    save_select(window)
 
-
-
-bible_versions = ["King James Bible", "World English Bible (WEB)", "Young's Literal Translation (YLT)", "Bible in Basic English"]
 
 
 def draw_arrow(surface, color, x, y, size=30, direction="right"):
@@ -153,14 +160,23 @@ def draw_arrow(surface, color, x, y, size=30, direction="right"):
 
 
 
+def menu(window):
+    pg.display.set_caption("Menu")
+    Title = TextRender.draw_title(window, "The Jesus Game", font, text_col, w // 2, int(h * 0.1))
+    TextRender.draw_title(window, f"Version: {VERSION}", pg.font.SysFont("Arial", 30), text_col, w//2, Height - 200)
+    start_button.draw(window)
+    about_button.draw(window)
+    settings_button.draw(window)
+
+    
 def about(window):
     pg.display.set_caption("About")
-    draw_title("About", font, text_col, w // 2, int (h * 0.1))
-    draw_p(window, "This game is meant to be both educational and fun. I want to teach people about Jesus and thought a game would be a good opportunity to do that. The images and assets are AI generated. This entire project is licensed under the GPL 3.0. All code is editable, free and distributable as long as it is maintained as such. I pray to God this game is edifying.",
+    TextRender.draw_title(window, "About", font, text_col, w // 2, int (h * 0.1))
+    TextRender.draw_p(window, "This game is meant to be both educational and fun. I want to teach people about Jesus and thought a game would be a good opportunity to do that. The images and assets are AI generated. This entire project is licensed under the GPL 3.0. All code is editable, free and distributable as long as it is maintained as such. I pray to God this game is edifying.",
                        (50, 150), font, text_col,
                        extra_spacing=10)
-    draw_title("John 3:16 ", font, text_col, w//2, 400)
-    draw_p(window, john_316, (50, 500), pg.font.SysFont("Arial", 20), text_col)
+    TextRender.draw_title(window, "John 3:16 ", font, text_col, w//2, 400)
+    TextRender.draw_p(window, john_316, (50, 500), pg.font.SysFont("Arial", 20), text_col)
 
 
 
@@ -171,13 +187,16 @@ def settings(window):
     global right_arrow, left_arrow
     og_space = 150
     pg.display.set_caption("Settings")
-    draw_title("Settings", font, text_col, w // 2, int (h * 0.1))
+    TextRender.draw_title(window, "Settings", font, text_col, w // 2, int (h * 0.1))
     # Default Bible Version is the KJV
-    curr_bible_version = draw_title( f"Bible Version: {bible_versions[b_version]}", pg.font.SysFont("Arial", 30), text_col, w // 2, og_space + 100)
+    curr_bible_version = TextRender.draw_title(window, f"Bible Version: {bible_versions[b_version]}", pg.font.SysFont("Arial", 30), text_col, w // 2, og_space + 100)
     right_arrow = draw_arrow(window, text_col, (w//2) + 400, og_space + 100, 40)
     left_arrow = draw_arrow(window, text_col, (w//2) - 400, og_space + 100, 40, "left")
     # Lets the user make window full screen
-    is_fullscreen = draw_title(f"Fullscreen: {str(Fullscreen).lower()}", pg.font.SysFont("Arial", 30), text_col, w//2, og_space + 200)
+    is_fullscreen = TextRender.draw_title(window, f"Fullscreen: {str(Fullscreen).lower()}", pg.font.SysFont("Arial", 30), text_col, w//2, og_space + 200)
+    
+    
+    
     return is_fullscreen
 
 # Makes sure the background is loaded, even if not run from the directory where the image is in. 
@@ -188,43 +207,43 @@ bg_scaled = pg.transform.scale(background_img, (Width, Height))
 
 run = True
 menu_state = "main"
+save_slot = SaveSlot()
 
 
-
-if __name__=='__main__':
+if __name__ == '__main__':
     while run:
+        events = pg.event.get()
         window.fill(("BLACK"))
         window.blit(bg_scaled, (0, 0))
 
         w, h = window.get_width(), window.get_height()
 
-        if menu_state != "start":
+        if menu_state != "start" and menu_state != "saves_menu":
             exit_button.draw(window)
+            if menu_state != "main" and menu_state != "saves_menu":
+                go_back_to_menu.draw(window)
+
 
         # Buttons and title disappear once user is away from main menu (except for exit button; this can be reused)
         if menu_state == "main":
-            pg.display.set_caption("Menu")
-            Title = draw_title("The Jesus Game", font, text_col, w // 2, int(h * 0.1))
-            draw_title(f"Version: {VERSION}", pg.font.SysFont("Arial", 30), text_col, w//2, Height - 200)
-            start_button.draw(window)
-            about_button.draw(window)
-            settings_button.draw(window)
+            menu(window)
+            
         # if we are not in menu, draw the go_to_menu button by default. 
         else:
             # Also can't be start 
-            if menu_state != "start":
-                go_back_to_menu.draw(window)
             if menu_state == "about":
                     about(window)
             elif menu_state == "settings":
                 is_fullscreen = settings(window)
+            elif menu_state == "saves_menu":
+                save_slot.save_menu(window)
+                go_back_to_saves.draw(window)
             else:
                 start(window)
                 
-        
         # Checks for user events
-        for event in pg.event.get():
-            if event.type == pg.QUIT or (event.type == pg.MOUSEBUTTONDOWN and exit_button.clicked(event.pos) and menu_state != "start"):
+        for event in events:
+            if event.type == pg.QUIT or (event.type == pg.MOUSEBUTTONDOWN and exit_button.clicked(event.pos) and menu_state != "start" and menu_state != "saves_menu"):
                 run = False
             if event.type == pg.RESIZABLE:
                 window = pg.display.set_mode((event.w, event.h), pg.RESIZABLE)
@@ -251,9 +270,24 @@ if __name__=='__main__':
                         if is_fullscreen.collidepoint(event.pos):
                             Fullscreen = not Fullscreen
                             window = pg.display.set_mode((0, 0), pg.FULLSCREEN) if Fullscreen else pg.display.set_mode((Width, Height), pg.RESIZABLE)
-                    if go_back_to_menu.clicked(event.pos) or go_back_to_menu_saves.clicked(event.pos):
+                    
+                    if menu_state == "start":
+                        for save in save_button_list:
+                            if save.clicked(event.pos):
+                                selected_save = save.slot_num
+                                menu_state = "saves_menu"
+                    
+                    if menu_state == "saves_menu":
+                        if go_back_to_saves and go_back_to_saves.clicked(event.pos):
+                            save_slot.clear_box()
+                            menu_state = "start"
+
+                        
+                    if go_back_to_menu.clicked(event.pos) and menu_state != "start" and menu_state != "saves_menu" or (menu_state == "start" and go_back_to_menu_saves.clicked(event.pos) and menu_state != "saves_menu"):
                         menu_state = "main"
 
+
+        pygame_widgets.update(events)
         pg.display.update()
         clock.tick(FPS)
 
