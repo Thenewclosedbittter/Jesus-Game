@@ -1,6 +1,6 @@
 import pygame as pg 
 
-class menu_button:
+class MenuButton:
     def __init__(self, text, width=200, height=100, color = (70, 130, 180), align="center", offset=(0, 0)):
         self.width = width
         self.height = height
@@ -36,5 +36,8 @@ class menu_button:
     def clicked(self, pos):
         return self.rect.collidepoint(pos)
     
-    
+class SaveButtons(MenuButton):
+    def __init__(self, slot_num, text, width=500, **kwargs):
+        super().__init__(text, width=width, **kwargs)
+        self.slot_num = slot_num
     
