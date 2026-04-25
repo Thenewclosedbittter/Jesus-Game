@@ -220,7 +220,7 @@ if __name__ == '__main__':
 
         if menu_state != "start" and menu_state != "saves_menu":
             exit_button.draw(window)
-            if menu_state != "main" and menu_state != "saves_menu":
+            if menu_state != "main":
                 go_back_to_menu.draw(window)
 
 
